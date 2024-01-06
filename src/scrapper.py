@@ -6,6 +6,7 @@ import time
 from selenium.webdriver.chrome.service import Service
 from bs4 import BeautifulSoup
 from webdriver_manager.chrome import ChromeDriverManager
+import pandas as pd
 
 
 class WebScraper:
@@ -38,7 +39,7 @@ class WebScraper:
         self.driver.get(self.website_url)
         all_data = []
         button_index = self.initial_button_index
-
+        expectedNextButtonName = 1
         while True:
             # Get the page source after JavaScript execution
             page_source = self.driver.page_source
@@ -50,24 +51,33 @@ class WebScraper:
             rows = table.find_all("tr")
             for element in rows:
                 all_data.append(element.text)
-                print(element.text)  # Replace this with how you want to handle each entry
+                #print(element.text)  # Replace this with how you want to handle each entry
             
             # Look for the next page link and click it
             try:
                 xpath = f'{self.pagination_xpath}[{button_index}]'
+                nextXpath = f'{self.pagination_xpath}[{button_index+1}]'
+                time.sleep(2)
                 next_page_link = WebDriverWait(self.driver, 10).until(
                     EC.element_to_be_clickable((By.XPATH, xpath))
                 )
                 next_page_link.click()
-                button_index += 1
+                
+                #check button at next index's name, if the name == next name  button_index++ else button_index stays the same
+                nextButtonName = driver.find_element(By.XPATH, nextXpath).text
+                expectedNextButtonName = expectedNextButtonName+1
+                #print(button_index,nextButtonName,expectedNextButtonName,(str(expectedNextButtonName) == str(nextButtonName)))
+                if str(expectedNextButtonName) == str(nextButtonName):
+                    button_index = button_index + 1
+        
+        
                 time.sleep(self.delay_between_requests)  # Add a small delay to ensure the next page content loads (adjust if needed)
             except Exception as e:
                 print(f"No more next page link or element found: {e}")
                 break
 
-        # Once finished, process 'all_data' as needed (e.g., convert to a DataFrame)
-        # df = pd.DataFrame(all_data)
-        # print(df)
+        Employers = pd.DataFrame(all_data)
+        Employers.to_csv("out.csv")
 
     def close_driver(self):
         self.driver.quit()
